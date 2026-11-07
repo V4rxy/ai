@@ -1,0 +1,5 @@
+PySide6>=6.7.0
+opencv-python>=4.10.0
+numpy>=1.26.0
+onnxruntime-gpu[cuda,cudnn]
+vgamepad>=0.1.0
