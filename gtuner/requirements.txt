@@ -1,3 +1,0 @@
-numpy>=1.24
-opencv-python>=4.8
-# Optional: install a CUDA/cuDNN-compatible onnxruntime-gpu separately.
