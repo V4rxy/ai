@@ -14,15 +14,7 @@ from PySide6.QtWidgets import (
     QWidget, QCheckBox
 )
 
-# Optional ViGEmBus controller output integration (vgamepad)
-try:
-    import vgamepad as vg
-    VIGEM_AVAILABLE = True
-except ImportError:
-    vg = None
-    VIGEM_AVAILABLE = False
-
-APP_NAME = "APEX VISION - NVIDIA GPU EDITION (ViGEmBus)"
+APP_NAME = "APEX VISION - NVIDIA GPU EDITION (VISUAL GUIDANCE)"
 INPUT_SIZE = 640
 
 # Make pip-installed CUDA/cuDNN DLLs discoverable
@@ -75,8 +67,8 @@ class JoystickVisualizer(QWidget):
         right_cx = w * 0.75
 
         # Render Joysticks
-        self._draw_joystick_base(painter, left_cx, cy, radius, "LEFT STICK (AIM GUIDANCE)")
-        self._draw_joystick_base(painter, right_cx, cy, radius, "RIGHT STICK (TARGET MAGNITUDE)")
+        self._draw_joystick_base(painter, left_cx, cy, radius, "LEFT STICK (MANUAL)")
+        self._draw_joystick_base(painter, right_cx, cy, radius, "RIGHT STICK (AI DIRECTION — VISUAL ONLY)")
         
         self._draw_center_info(painter, w / 2.0, cy)
 
@@ -154,7 +146,7 @@ class JoystickVisualizer(QWidget):
 class VisionWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Apex Vision — NVIDIA RTX 5060 Ti (ViGEmBus Edition)")
+        self.setWindowTitle("Apex Vision — NVIDIA RTX 5060 Ti (PlayStation-Style Visualizer)")
         self.resize(1340, 880)
         self.setMinimumSize(1024, 720)
 
@@ -181,16 +173,6 @@ class VisionWindow(QMainWindow):
         self.infer_thread = None
         self.shown_frame_id = -1
 
-        # ViGEmBus Virtual Controller Initialization
-        self.gamepad = None
-        self.vigem_enabled = False
-        if VIGEM_AVAILABLE:
-            try:
-                self.gamepad = vg.VX360Gamepad()
-                print("[ViGEmBus]: Xbox 360 Virtual Controller initialized successfully.")
-            except Exception as e:
-                print(f"[ViGEmBus Init Warning]: {e}")
-
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.update_frame)
 
@@ -209,9 +191,9 @@ class VisionWindow(QMainWindow):
         # Header
         header = QHBoxLayout()
         brand_box = QVBoxLayout()
-        title = QLabel("<span style='color:#ffffff; font-weight:900;'>ENGINE</span><span style='color:#76b900; font-weight:900;'>X</span> <span style='color:#8d93a8; font-weight:400; font-size:18px;'>| APEX VISION (ViGEmBus & CLOSEST TARGET FILTER)</span>")
+        title = QLabel("<span style='color:#ffffff; font-weight:900;'>ENGINE</span><span style='color:#76b900; font-weight:900;'>X</span> <span style='color:#8d93a8; font-weight:400; font-size:18px;'>| APEX VISION (PLAYSTATION-STYLE VISUALIZER)</span>")
         title.setObjectName("brand")
-        subtitle = QLabel("RTX 5060 Ti ACCELERATED VISUAL DETECTION & VIRTUAL CONTROLLER GUIDANCE")
+        subtitle = QLabel("RTX 5060 Ti ACCELERATED VISUAL DETECTION & STICK DIRECTION DISPLAY")
         subtitle.setObjectName("subtle")
         brand_box.addWidget(title)
         brand_box.addWidget(subtitle)
@@ -303,7 +285,7 @@ class VisionWindow(QMainWindow):
         c_layout.addLayout(btn_box)
         right_layout.addWidget(capture_card)
 
-        # AI Model & ViGEmBus Settings
+        # AI Model & PlayStation-Style Visual Guidance Settings
         model_card = self.card()
         m_layout = QVBoxLayout(model_card)
         m_layout.setContentsMargins(14, 12, 14, 12)
@@ -323,13 +305,10 @@ class VisionWindow(QMainWindow):
         m_btns.addWidget(names_btn)
         m_layout.addLayout(m_btns)
 
-        # ViGEmBus Controller Toggle
-        self.vigem_checkbox = QCheckBox("Enable ViGEmBus Virtual Controller Output")
-        self.vigem_checkbox.setEnabled(VIGEM_AVAILABLE and self.gamepad is not None)
-        if not VIGEM_AVAILABLE:
-            self.vigem_checkbox.setToolTip("Install vgamepad & ViGEmBus drivers to enable virtual controller output.")
-        self.vigem_checkbox.toggled.connect(self._on_vigem_toggled)
-        m_layout.addWidget(self.vigem_checkbox)
+        guidance_label = QLabel("PLAYSTATION-STYLE STICK DISPLAY — VISUAL GUIDANCE ONLY")
+        guidance_label.setObjectName("accent")
+        guidance_label.setWordWrap(True)
+        m_layout.addWidget(guidance_label)
 
         m_layout.addWidget(self.small_label("Confidence Threshold"))
         self.conf_label = QLabel("0.45")
@@ -377,19 +356,9 @@ class VisionWindow(QMainWindow):
         right_layout.addStretch()
 
         # Footer
-        footer = QLabel("ENGINE-X APEX VISION  •  ViGEmBus SUPPORT  •  NVIDIA CUDA ACCELERATED")
+        footer = QLabel("ENGINE-X APEX VISION  •  PLAYSTATION-STYLE VISUAL GUIDANCE  •  NVIDIA CUDA")
         footer.setObjectName("footer")
         outer.addWidget(footer)
-
-    def _on_vigem_toggled(self, checked):
-        self.vigem_enabled = checked
-        if checked:
-            print("[ViGEmBus]: Virtual controller output enabled.")
-        else:
-            if self.gamepad:
-                self.gamepad.reset()
-                self.gamepad.update()
-            print("[ViGEmBus]: Virtual controller reset to neutral.")
 
     def _on_conf(self, v):
         self.conf_value = v / 100.0
@@ -501,9 +470,6 @@ class VisionWindow(QMainWindow):
             self.resolution_label.setText("NO SIGNAL")
             self.pipeline_label.setText("Waiting for capture connection...")
             self.joystick_widget.update_target(0, 0, 0, 0, False)
-            if self.gamepad and self.vigem_enabled:
-                self.gamepad.reset()
-                self.gamepad.update()
             return
 
         device = self.device_combo.currentData()
@@ -789,19 +755,8 @@ class VisionWindow(QMainWindow):
             # Update Joystick Visualizer with Closest Target
             self.joystick_widget.update_target(dx, dy, dist, angle_deg, True)
 
-            # Send ViGEmBus Virtual Controller Joystick Inputs (if enabled)
-            if self.gamepad and self.vigem_enabled:
-                max_offset = 640.0 / 2.0
-                norm_x = max(-1.0, min(1.0, dx / max_offset))
-                norm_y = max(-1.0, min(1.0, dy / max_offset))
-                # Map [-1.0, 1.0] to Xbox controller right joystick [-32768, 32767]
-                self.gamepad.right_joystick_float(x_value_float=norm_x, y_value_float=-norm_y)
-                self.gamepad.update()
         else:
             self.joystick_widget.update_target(0, 0, 0, 0, False)
-            if self.gamepad and self.vigem_enabled:
-                self.gamepad.right_joystick_float(x_value_float=0.0, y_value_float=0.0)
-                self.gamepad.update()
 
         self.resolution_label.setText(f"{w} × {h}")
         self.fps_value.setText(f"{self.fps:.1f}")
@@ -826,12 +781,6 @@ class VisionWindow(QMainWindow):
         self.stop_workers()
         if self.capture is not None:
             self.capture.release()
-        if self.gamepad:
-            try:
-                self.gamepad.reset()
-                self.gamepad.update()
-            except Exception:
-                pass
         event.accept()
 
 
