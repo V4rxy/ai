@@ -1,0 +1,8 @@
+{
+  "model_path": "",
+  "names_path": "",
+  "input_size": 640,
+  "confidence": 0.40,
+  "nms_threshold": 0.45,
+  "use_cuda": false
+}
