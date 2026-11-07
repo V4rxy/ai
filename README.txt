@@ -44,6 +44,43 @@ running ONNX object detection, and displaying visual-only target direction.
 - The separate Chiaki companion can launch Chiaki-ng and display UDP telemetry,
   but telemetry sending from main.py still needs to be implemented separately.
 
+## Titan Two / Gtuner IV Computer Vision version
+
+A separate visual-only worker is included for running inside Gtuner IV's
+Computer Vision panel:
+
+- gtuner/ApexVision_GCV.py: GCVWorker that receives Gtuner's video frame,
+  runs an ONNX model through OpenCV DNN, highlights the closest detection,
+  and draws a manual right-stick direction guide.
+- gtuner/apex_vision_config.json: model configuration template.
+
+Setup:
+
+1. Connect the Titan Two PROG port to the PC and open Gtuner IV.
+2. In Gtuner IV Preferences -> Computer Vision, select the Python environment
+   that can import both cv2 and numpy.
+3. Open the Computer Vision panel and select the PS5 capture-card video input.
+4. Open gtuner/ApexVision_GCV.py as a GCV script and start it in the CV panel.
+5. Edit gtuner/apex_vision_config.json and set model_path to the full path of
+   your ONNX model. Optionally set names_path to a text file with one class
+   name per line. Restart the GCV script after changing the config.
+6. Start with use_cuda=false. Set it true only if your OpenCV build includes
+   CUDA support; ordinary pip OpenCV wheels generally use the CPU.
+
+This GCV worker uses Gtuner's frame callback. It does not open a second video
+capture device, does not require the standalone app's UDP bridge, and returns
+Gtuner's gcvdata buffer unchanged. It does not write stick values, emulate a
+controller, or inject inputs. The Titan Two remains responsible for the
+physical controller passthrough; the direction indicator is for the player
+to follow manually.
+
+Model compatibility: the worker expects a YOLO-style ONNX output with
+center-x, center-y, width, height, and class scores (common YOLOv8 exports;
+YOLOv5 exports with objectness are also handled). Other ONNX output layouts
+may need a model-specific parser. Gtuner's embedded Python/OpenCV versions
+and actual Titan Two/capture-card hardware have not been tested in this
+repository, so verify the CV panel loads the worker before relying on it.
+
 ## Troubleshooting
 
 - If Python 3.11 is not found, install Python 3.11 x64 and enable the
