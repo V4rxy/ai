@@ -1,0 +1,7 @@
+{
+  "model_path": "Apx8_Harlan.onnx",
+  "confidence": 0.35,
+  "iou": 0.45,
+  "input_size": 640,
+  "class_names": []
+}
